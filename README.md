@@ -1,2 +1,3 @@
-# ERLC-maps-editor
-Easy editor to get nodes/blips.
+# ERLC Maps Editor
+
+GENERATE BLIPS FOR THE ERLC MAPS PACK
