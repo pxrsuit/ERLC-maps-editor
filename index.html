@@ -1,0 +1,2200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>Map Point Editor</title>
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            font-family: Inter, Arial, sans-serif;
+            background: #111;
+            color: #fff;
+        }
+
+        button,
+        input,
+        textarea {
+            font: inherit;
+        }
+
+        /* ==============================
+           APP
+        ============================== */
+
+        .app {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        /* ==============================
+           SIDEBAR
+        ============================== */
+
+        .sidebar {
+            width: 320px;
+            min-width: 320px;
+            height: 100%;
+            background: #181818;
+            border-right: 1px solid #2b2b2b;
+            display: flex;
+            flex-direction: column;
+            z-index: 20;
+        }
+
+        .header {
+            padding: 20px;
+            border-bottom: 1px solid #2b2b2b;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 20px;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            color: #888;
+            font-size: 13px;
+        }
+
+        .modes {
+            display: flex;
+            gap: 8px;
+            padding: 15px;
+            border-bottom: 1px solid #2b2b2b;
+        }
+
+        .mode-button {
+            flex: 1;
+            border: 0;
+            border-radius: 8px;
+            padding: 11px;
+            background: #252525;
+            color: #aaa;
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .mode-button:hover {
+            background: #303030;
+        }
+
+        .mode-button.active {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+        }
+
+        .info {
+            background: #202020;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 15px;
+            color: #aaa;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .info strong {
+            color: white;
+        }
+
+        .point-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .point {
+            background: #222;
+            border: 1px solid #303030;
+            border-radius: 8px;
+            padding: 10px;
+            cursor: pointer;
+            transition: .15s;
+        }
+
+        .point:hover {
+            border-color: #555;
+            background: #292929;
+        }
+
+        .point-title {
+            font-weight: 600;
+            font-size: 14px;
+        }
+
+        .point-coordinates {
+            margin-top: 3px;
+            font-size: 12px;
+            color: #888;
+        }
+
+        .point-description {
+            margin-top: 5px;
+            font-size: 12px;
+            color: #aaa;
+        }
+
+        .empty {
+            text-align: center;
+            color: #666;
+            font-size: 13px;
+            padding: 30px 10px;
+        }
+
+        .footer {
+            padding: 15px;
+            border-top: 1px solid #2b2b2b;
+        }
+
+        .export-button {
+            width: 100%;
+            border: 0;
+            border-radius: 8px;
+            background: #22c55e;
+            color: white;
+            padding: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+
+        .export-button:hover {
+            background: #16a34a;
+        }
+
+        /* ==============================
+           MAP
+        ============================== */
+
+        .map-container {
+            position: relative;
+            flex: 1;
+            overflow: hidden;
+            background: #0d0d0d;
+            cursor: crosshair;
+        }
+
+        .map {
+            position: absolute;
+            left: 0;
+            top: 0;
+
+            width: 3121px;
+            height: 3121px;
+
+            max-width: none;
+            user-select: none;
+            -webkit-user-drag: none;
+
+            transform-origin: 0 0;
+        }
+
+        .map-layer {
+            position: absolute;
+            inset: 0;
+        }
+
+        /* ==============================
+           POINTS
+        ============================== */
+
+        .map-point {
+            position: absolute;
+
+            width: 20px;
+            height: 20px;
+
+            transform: translate(-50%, -50%);
+
+            border-radius: 50%;
+            border: 2px solid white;
+
+            background: #3b82f6;
+
+            box-shadow:
+                0 2px 8px rgba(0, 0, 0, .5);
+
+            z-index: 5;
+
+            cursor: pointer;
+        }
+
+        .map-point.node {
+            background: #f59e0b;
+        }
+
+        .map-point.blip {
+            background: #3b82f6;
+        }
+
+        .point-label {
+            position: absolute;
+
+            left: 50%;
+            top: 25px;
+
+            transform: translateX(-50%);
+
+            padding: 3px 6px;
+
+            border-radius: 4px;
+
+            background: rgba(0, 0, 0, .8);
+
+            color: white;
+
+            white-space: nowrap;
+
+            font-size: 11px;
+            pointer-events: none;
+        }
+
+        /* ==============================
+           ZOOM
+        ============================== */
+
+        .zoom-controls {
+            position: absolute;
+            right: 20px;
+            bottom: 20px;
+
+            display: flex;
+            flex-direction: column;
+
+            background: #181818;
+            border: 1px solid #333;
+            border-radius: 8px;
+
+            overflow: hidden;
+
+            z-index: 10;
+        }
+
+        .zoom-controls button {
+            width: 40px;
+            height: 40px;
+
+            border: 0;
+            border-bottom: 1px solid #333;
+
+            background: #181818;
+            color: white;
+
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .zoom-controls button:last-child {
+            border-bottom: 0;
+        }
+
+        .zoom-controls button:hover {
+            background: #292929;
+        }
+
+        /* ==============================
+           MODAL
+        ============================== */
+
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+
+            background: rgba(0, 0, 0, .65);
+
+            display: none;
+            align-items: center;
+            justify-content: center;
+
+            z-index: 100;
+        }
+
+        .modal-backdrop.visible {
+            display: flex;
+        }
+
+        .modal {
+            width: 420px;
+            max-width: calc(100vw - 30px);
+
+            background: #1c1c1c;
+            border: 1px solid #333;
+            border-radius: 12px;
+
+            padding: 20px;
+
+            box-shadow: 0 20px 60px rgba(0, 0, 0, .5);
+        }
+
+        .modal h2 {
+            margin: 0 0 18px;
+            font-size: 18px;
+        }
+
+        .form-group {
+            margin-bottom: 13px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+
+            border: 1px solid #333;
+            border-radius: 7px;
+
+            background: #111;
+            color: white;
+
+            padding: 9px 10px;
+
+            outline: none;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: #3b82f6;
+        }
+
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .coordinates {
+            background: #111;
+            border: 1px solid #2b2b2b;
+            border-radius: 7px;
+
+            padding: 9px 10px;
+
+            color: #aaa;
+            font-size: 12px;
+        }
+
+        .modal-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 20px;
+        }
+
+        .modal-buttons button {
+            flex: 1;
+
+            border: 0;
+            border-radius: 7px;
+
+            padding: 10px;
+
+            cursor: pointer;
+        }
+
+        .cancel-button {
+            background: #292929;
+            color: white;
+        }
+
+        .save-button {
+            background: #3b82f6;
+            color: white;
+        }
+
+        .delete-button {
+            background: #dc2626;
+            color: white;
+        }
+
+        /* ==============================
+           EXPORT MODAL
+        ============================== */
+
+        .export-modal {
+            width: 800px;
+        }
+
+        .export-output {
+            width: 100%;
+            height: 400px;
+
+            resize: none;
+
+            background: #101010;
+            color: #ddd;
+
+            border: 1px solid #333;
+            border-radius: 8px;
+
+            padding: 12px;
+
+            font-family:
+                "SFMono-Regular",
+                Consolas,
+                monospace;
+
+            font-size: 12px;
+
+            outline: none;
+        }
+
+        .export-actions {
+            display: flex;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .export-actions button {
+            flex: 1;
+            border: 0;
+            border-radius: 7px;
+            padding: 10px;
+            cursor: pointer;
+        }
+
+        /* ==============================
+           RESPONSIVE
+        ============================== */
+
+        @media (max-width: 700px) {
+            .sidebar {
+                width: 250px;
+                min-width: 250px;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="app">
+
+    <aside class="sidebar">
+
+        <div class="header">
+            <h1>Map Point Editor</h1>
+            <p>Node & Blip configuration tool</p>
+        </div>
+
+        <div class="modes">
+
+            <button
+                class="mode-button active"
+                data-mode="node"
+            >
+                Node Mode
+            </button>
+
+            <button
+                class="mode-button"
+                data-mode="blip"
+            >
+                Blip Mode
+            </button>
+
+        </div>
+
+        <div class="sidebar-content">
+
+            <div class="info" id="modeInfo">
+                <strong>Node Mode</strong><br>
+                Click anywhere on the map to create a node.
+                Nodes are automatically named A, B, C, etc.
+            </div>
+
+            <div
+                class="point-list"
+                id="pointList"
+            ></div>
+
+        </div>
+
+        <div class="footer">
+
+            <button
+                class="export-button"
+                id="exportButton"
+            >
+                Export
+            </button>
+
+        </div>
+
+    </aside>
+
+
+    <main
+        class="map-container"
+        id="mapContainer"
+    >
+
+        <img
+            src="assets/map.png"
+            id="map"
+            class="map"
+            draggable="false"
+            alt="Map"
+        >
+
+        <div
+            class="map-layer"
+            id="mapLayer"
+        ></div>
+
+
+        <div class="zoom-controls">
+
+            <button id="zoomIn">
+                +
+            </button>
+
+            <button id="zoomOut">
+                −
+            </button>
+
+            <button id="zoomReset">
+                ⌂
+            </button>
+
+        </div>
+
+    </main>
+
+</div>
+
+
+<!-- ==============================
+     BLIP MODAL
+================================ -->
+
+<div
+    class="modal-backdrop"
+    id="blipModal"
+>
+
+    <div class="modal">
+
+        <h2 id="modalTitle">
+            Create Blip
+        </h2>
+
+        <div class="form-group">
+
+            <label>
+                ID
+            </label>
+
+            <input
+                id="blipId"
+                placeholder="police"
+            >
+
+        </div>
+
+        <div class="form-group">
+
+            <label>
+                Name
+            </label>
+
+            <input
+                id="blipName"
+                placeholder="Police Department"
+            >
+
+        </div>
+
+        <div class="form-group">
+
+            <label>
+                Icon
+            </label>
+
+            <input
+                id="blipIcon"
+                placeholder="police"
+            >
+
+        </div>
+
+        <div class="form-group">
+
+            <label>
+                Photo
+            </label>
+
+            <input
+                id="blipPhoto"
+                placeholder="./assets/blips/police.jpg"
+            >
+
+        </div>
+
+        <div class="form-group">
+
+            <label>
+                Description
+            </label>
+
+            <textarea
+                id="blipDescription"
+                placeholder="Police Department van deze locatie."
+            ></textarea>
+
+        </div>
+
+        <div class="form-group">
+
+            <label>
+                Coordinates
+            </label>
+
+            <div
+                class="coordinates"
+                id="blipCoordinates"
+            >
+                X: 0, Y: 0
+            </div>
+
+        </div>
+
+        <div class="modal-buttons">
+
+            <button
+                class="cancel-button"
+                id="cancelBlip"
+            >
+                Cancel
+            </button>
+
+            <button
+                class="delete-button"
+                id="deleteBlip"
+                style="display:none"
+            >
+                Delete
+            </button>
+
+            <button
+                class="save-button"
+                id="saveBlip"
+            >
+                Save
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- ==============================
+     EXPORT MODAL
+================================ -->
+
+<div
+    class="modal-backdrop"
+    id="exportModal"
+>
+
+    <div class="modal export-modal">
+
+        <h2>
+            Export
+        </h2>
+
+        <textarea
+            class="export-output"
+            id="exportOutput"
+            readonly
+        ></textarea>
+
+        <div class="export-actions">
+
+            <button
+                class="cancel-button"
+                id="closeExport"
+            >
+                Close
+            </button>
+
+            <button
+                class="save-button"
+                id="copyExport"
+            >
+                Copy
+            </button>
+
+            <button
+                class="save-button"
+                id="downloadExport"
+            >
+                Download
+            </button>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<script>
+
+    /*
+     * ==========================================
+     * CONFIG
+     * ==========================================
+     */
+
+    const MAP_WIDTH = 3121;
+    const MAP_HEIGHT = 3121;
+
+    const STORAGE_KEY = "map-point-editor-data";
+
+
+    /*
+     * ==========================================
+     * STATE
+     * ==========================================
+     */
+
+    let currentMode = "node";
+
+    let nodes = [];
+
+    let blips = [];
+
+    let editingBlipIndex = null;
+
+    let pendingBlip = null;
+
+
+    /*
+     * ==========================================
+     * DOM
+     * ==========================================
+     */
+
+    const mapContainer =
+        document.getElementById("mapContainer");
+
+    const map =
+        document.getElementById("map");
+
+    const mapLayer =
+        document.getElementById("mapLayer");
+
+    const pointList =
+        document.getElementById("pointList");
+
+    const modeInfo =
+        document.getElementById("modeInfo");
+
+    const blipModal =
+        document.getElementById("blipModal");
+
+    const exportModal =
+        document.getElementById("exportModal");
+
+    const exportOutput =
+        document.getElementById("exportOutput");
+
+
+    /*
+     * ==========================================
+     * LOAD DATA
+     * ==========================================
+     */
+
+    function loadData() {
+
+        try {
+
+            const saved =
+                localStorage.getItem(STORAGE_KEY);
+
+            if (!saved)
+                return;
+
+            const data =
+                JSON.parse(saved);
+
+            nodes =
+                Array.isArray(data.nodes)
+                    ? data.nodes
+                    : [];
+
+            blips =
+                Array.isArray(data.blips)
+                    ? data.blips
+                    : [];
+
+        } catch (error) {
+
+            console.error(
+                "Failed to load saved data:",
+                error
+            );
+
+        }
+
+    }
+
+
+    /*
+     * ==========================================
+     * SAVE DATA
+     * ==========================================
+     */
+
+    function saveData() {
+
+        localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify({
+                nodes,
+                blips
+            })
+        );
+
+    }
+
+
+    /*
+     * ==========================================
+     * MODE
+     * ==========================================
+     */
+
+    document
+        .querySelectorAll(".mode-button")
+        .forEach(button => {
+
+            button.addEventListener(
+                "click",
+                () => {
+
+                    currentMode =
+                        button.dataset.mode;
+
+                    document
+                        .querySelectorAll(".mode-button")
+                        .forEach(btn => {
+
+                            btn.classList.toggle(
+                                "active",
+                                btn === button
+                            );
+
+                        });
+
+                    updateModeInfo();
+
+                }
+            );
+
+        });
+
+
+    function updateModeInfo() {
+
+        if (currentMode === "node") {
+
+            modeInfo.innerHTML = `
+                <strong>Node Mode</strong><br>
+                Click anywhere on the map to create
+                a node. Nodes are automatically named
+                A, B, C, etc.
+            `;
+
+        } else {
+
+            modeInfo.innerHTML = `
+                <strong>Blip Mode</strong><br>
+                Click anywhere on the map to create a
+                blip. You can then enter its details.
+            `;
+
+        }
+
+    }
+
+
+    /*
+     * ==========================================
+     * COORDINATES
+     * ==========================================
+     *
+     * Coordinates are always relative to the
+     * original 3121 × 3121 image.
+     */
+
+    function getMapCoordinates(event) {
+
+        const rect =
+            map.getBoundingClientRect();
+
+        const scale =
+            zoom;
+
+        const x =
+            Math.round(
+                (event.clientX - rect.left) / scale
+            );
+
+        const y =
+            Math.round(
+                (event.clientY - rect.top) / scale
+            );
+
+        return {
+
+            x: Math.max(
+                0,
+                Math.min(MAP_WIDTH, x)
+            ),
+
+            y: Math.max(
+                0,
+                Math.min(MAP_HEIGHT, y)
+            )
+
+        };
+
+    }
+
+
+    /*
+     * ==========================================
+     * MAP CLICK
+     * ==========================================
+     */
+
+    mapContainer.addEventListener(
+        "click",
+        event => {
+
+            /*
+             * Ignore clicks on existing points.
+             */
+
+            if (
+                event.target.closest(".map-point")
+            ) {
+
+                return;
+
+            }
+
+            const coordinates =
+                getMapCoordinates(event);
+
+
+            if (currentMode === "node") {
+
+                createNode(
+                    coordinates.x,
+                    coordinates.y
+                );
+
+            } else {
+
+                openBlipModal(
+                    coordinates.x,
+                    coordinates.y
+                );
+
+            }
+
+        }
+    );
+
+
+    /*
+     * ==========================================
+     * NODE CREATION
+     * ==========================================
+     */
+
+    function getNextNodeName() {
+
+        /*
+         * A, B, C...
+         */
+
+        return String.fromCharCode(
+            65 + nodes.length
+        );
+
+    }
+
+
+    function createNode(x, y) {
+
+        const node = {
+
+            id: getNextNodeName(),
+
+            x,
+            y
+
+        };
+
+        nodes.push(node);
+
+        saveData();
+        render();
+
+    }
+
+
+    /*
+     * ==========================================
+     * BLIP MODAL
+     * ==========================================
+     */
+
+    function openBlipModal(
+        x,
+        y,
+        existingIndex = null
+    ) {
+
+        editingBlipIndex =
+            existingIndex;
+
+        pendingBlip = {
+            x,
+            y
+        };
+
+
+        document.getElementById(
+            "blipCoordinates"
+        ).textContent =
+            `X: ${x}, Y: ${y}`;
+
+
+        if (
+            existingIndex !== null
+        ) {
+
+            const blip =
+                blips[existingIndex];
+
+            document.getElementById(
+                "modalTitle"
+            ).textContent =
+                "Edit Blip";
+
+            document.getElementById(
+                "blipId"
+            ).value =
+                blip.id || "";
+
+            document.getElementById(
+                "blipName"
+            ).value =
+                blip.name || "";
+
+            document.getElementById(
+                "blipIcon"
+            ).value =
+                blip.icon || "";
+
+            document.getElementById(
+                "blipPhoto"
+            ).value =
+                blip.photo || "";
+
+            document.getElementById(
+                "blipDescription"
+            ).value =
+                blip.description || "";
+
+            document.getElementById(
+                "deleteBlip"
+            ).style.display =
+                "block";
+
+        } else {
+
+            document.getElementById(
+                "modalTitle"
+            ).textContent =
+                "Create Blip";
+
+            document.getElementById(
+                "blipId"
+            ).value =
+                "";
+
+            document.getElementById(
+                "blipName"
+            ).value =
+                "";
+
+            document.getElementById(
+                "blipIcon"
+            ).value =
+                "";
+
+            document.getElementById(
+                "blipPhoto"
+            ).value =
+                "";
+
+            document.getElementById(
+                "blipDescription"
+            ).value =
+                "";
+
+            document.getElementById(
+                "deleteBlip"
+            ).style.display =
+                "none";
+
+        }
+
+
+        blipModal.classList.add(
+            "visible"
+        );
+
+    }
+
+
+    function closeBlipModal() {
+
+        blipModal.classList.remove(
+            "visible"
+        );
+
+        editingBlipIndex = null;
+        pendingBlip = null;
+
+    }
+
+
+    document
+        .getElementById("cancelBlip")
+        .addEventListener(
+            "click",
+            closeBlipModal
+        );
+
+
+    /*
+     * ==========================================
+     * SAVE BLIP
+     * ==========================================
+     */
+
+    document
+        .getElementById("saveBlip")
+        .addEventListener(
+            "click",
+            () => {
+
+                if (!pendingBlip)
+                    return;
+
+
+                const blip = {
+
+                    id:
+                        document.getElementById(
+                            "blipId"
+                        ).value.trim(),
+
+                    name:
+                        document.getElementById(
+                            "blipName"
+                        ).value.trim(),
+
+                    x:
+                        pendingBlip.x,
+
+                    y:
+                        pendingBlip.y,
+
+                    icon:
+                        document.getElementById(
+                            "blipIcon"
+                        ).value.trim(),
+
+                    photo:
+                        document.getElementById(
+                            "blipPhoto"
+                        ).value.trim(),
+
+                    description:
+                        document.getElementById(
+                            "blipDescription"
+                        ).value.trim()
+
+                };
+
+
+                if (!blip.id) {
+
+                    alert(
+                        "Please enter a blip ID."
+                    );
+
+                    return;
+
+                }
+
+
+                if (!blip.name) {
+
+                    alert(
+                        "Please enter a blip name."
+                    );
+
+                    return;
+
+                }
+
+
+                if (
+                    editingBlipIndex !== null
+                ) {
+
+                    blips[
+                        editingBlipIndex
+                    ] = blip;
+
+                } else {
+
+                    blips.push(blip);
+
+                }
+
+
+                saveData();
+
+                render();
+
+                closeBlipModal();
+
+            }
+        );
+
+
+    /*
+     * ==========================================
+     * DELETE BLIP
+     * ==========================================
+     */
+
+    document
+        .getElementById("deleteBlip")
+        .addEventListener(
+            "click",
+            () => {
+
+                if (
+                    editingBlipIndex === null
+                )
+                    return;
+
+
+                if (
+                    !confirm(
+                        "Delete this blip?"
+                    )
+                )
+                    return;
+
+
+                blips.splice(
+                    editingBlipIndex,
+                    1
+                );
+
+                saveData();
+
+                render();
+
+                closeBlipModal();
+
+            }
+        );
+
+
+    /*
+     * ==========================================
+     * RENDER MAP
+     * ==========================================
+     */
+
+    function render() {
+
+        mapLayer.innerHTML = "";
+
+
+        /*
+         * Nodes
+         */
+
+        nodes.forEach(
+            (node, index) => {
+
+                const element =
+                    createMapPoint(
+                        node.x,
+                        node.y,
+                        node.id,
+                        "node"
+                    );
+
+
+                element.addEventListener(
+                    "click",
+                    event => {
+
+                        event.stopPropagation();
+
+                        /*
+                         * Clicking a node removes it.
+                         */
+
+                        if (
+                            confirm(
+                                `Delete node ${node.id}?`
+                            )
+                        ) {
+
+                            nodes.splice(
+                                index,
+                                1
+                            );
+
+                            /*
+                             * Re-number nodes.
+                             */
+
+                            nodes.forEach(
+                                (n, i) => {
+
+                                    n.id =
+                                        String.fromCharCode(
+                                            65 + i
+                                        );
+
+                                }
+                            );
+
+                            saveData();
+                            render();
+
+                        }
+
+                    }
+                );
+
+
+                mapLayer.appendChild(
+                    element
+                );
+
+            }
+        );
+
+
+        /*
+         * Blips
+         */
+
+        blips.forEach(
+            (blip, index) => {
+
+                const element =
+                    createMapPoint(
+                        blip.x,
+                        blip.y,
+                        blip.id,
+                        "blip"
+                    );
+
+
+                element.addEventListener(
+                    "click",
+                    event => {
+
+                        event.stopPropagation();
+
+                        openBlipModal(
+                            blip.x,
+                            blip.y,
+                            index
+                        );
+
+                    }
+                );
+
+
+                mapLayer.appendChild(
+                    element
+                );
+
+            }
+        );
+
+
+        renderList();
+
+    }
+
+
+    function createMapPoint(
+        x,
+        y,
+        label,
+        type
+    ) {
+
+        const element =
+            document.createElement("div");
+
+        element.className =
+            `map-point ${type}`;
+
+        element.style.left =
+            `${x}px`;
+
+        element.style.top =
+            `${y}px`;
+
+
+        const labelElement =
+            document.createElement("div");
+
+        labelElement.className =
+            "point-label";
+
+        labelElement.textContent =
+            label;
+
+
+        element.appendChild(
+            labelElement
+        );
+
+
+        return element;
+
+    }
+
+
+    /*
+     * ==========================================
+     * SIDEBAR LIST
+     * ==========================================
+     */
+
+    function renderList() {
+
+        pointList.innerHTML = "";
+
+
+        if (
+            nodes.length === 0 &&
+            blips.length === 0
+        ) {
+
+            pointList.innerHTML = `
+                <div class="empty">
+                    No points added yet.
+                </div>
+            `;
+
+            return;
+
+        }
+
+
+        nodes.forEach(
+            node => {
+
+                const element =
+                    document.createElement(
+                        "div"
+                    );
+
+                element.className =
+                    "point";
+
+                element.innerHTML = `
+                    <div class="point-title">
+                        Node ${node.id}
+                    </div>
+
+                    <div class="point-coordinates">
+                        X: ${node.x} · Y: ${node.y}
+                    </div>
+                `;
+
+
+                element.addEventListener(
+                    "click",
+                    () => {
+
+                        centerOnPoint(
+                            node.x,
+                            node.y
+                        );
+
+                    }
+                );
+
+
+                pointList.appendChild(
+                    element
+                );
+
+            }
+        );
+
+
+        blips.forEach(
+            blip => {
+
+                const element =
+                    document.createElement(
+                        "div"
+                    );
+
+                element.className =
+                    "point";
+
+                element.innerHTML = `
+                    <div class="point-title">
+                        ${escapeHtml(blip.name)}
+                    </div>
+
+                    <div class="point-coordinates">
+                        ${escapeHtml(blip.id)}
+                        · X: ${blip.x}
+                        · Y: ${blip.y}
+                    </div>
+
+                    ${
+                        blip.description
+                            ? `
+                                <div class="point-description">
+                                    ${escapeHtml(
+                                        blip.description
+                                    )}
+                                </div>
+                            `
+                            : ""
+                    }
+                `;
+
+
+                element.addEventListener(
+                    "click",
+                    () => {
+
+                        centerOnPoint(
+                            blip.x,
+                            blip.y
+                        );
+
+                    }
+                );
+
+
+                pointList.appendChild(
+                    element
+                );
+
+            }
+        );
+
+    }
+
+
+    function escapeHtml(value) {
+
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;")
+            .replaceAll('"', "&quot;")
+            .replaceAll("'", "&#039;");
+
+    }
+
+
+    /*
+     * ==========================================
+     * MAP POSITION / ZOOM
+     * ==========================================
+     */
+
+    let zoom = 1;
+
+    let offsetX = 0;
+    let offsetY = 0;
+
+
+    function updateMapTransform() {
+
+        map.style.transform =
+            `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`;
+
+        mapLayer.style.transform =
+            `translate(${offsetX}px, ${offsetY}px) scale(${zoom})`;
+
+        mapLayer.style.transformOrigin =
+            "0 0";
+
+    }
+
+
+    function setZoom(
+        newZoom
+    ) {
+
+        zoom =
+            Math.max(
+                .2,
+                Math.min(
+                    5,
+                    newZoom
+                )
+            );
+
+        updateMapTransform();
+
+    }
+
+
+    document
+        .getElementById("zoomIn")
+        .addEventListener(
+            "click",
+            () => {
+
+                setZoom(
+                    zoom * 1.25
+                );
+
+            }
+        );
+
+
+    document
+        .getElementById("zoomOut")
+        .addEventListener(
+            "click",
+            () => {
+
+                setZoom(
+                    zoom / 1.25
+                );
+
+            }
+        );
+
+
+    document
+        .getElementById("zoomReset")
+        .addEventListener(
+            "click",
+            () => {
+
+                zoom = 1;
+
+                offsetX = 0;
+                offsetY = 0;
+
+                updateMapTransform();
+
+            }
+        );
+
+
+    /*
+     * ==========================================
+     * CENTER ON POINT
+     * ==========================================
+     */
+
+    function centerOnPoint(
+        x,
+        y
+    ) {
+
+        const rect =
+            mapContainer.getBoundingClientRect();
+
+
+        offsetX =
+            rect.width / 2 -
+            x * zoom;
+
+
+        offsetY =
+            rect.height / 2 -
+            y * zoom;
+
+
+        updateMapTransform();
+
+    }
+
+
+    /*
+     * ==========================================
+     * MOUSE WHEEL ZOOM
+     * ==========================================
+     */
+
+    mapContainer.addEventListener(
+        "wheel",
+        event => {
+
+            event.preventDefault();
+
+            const oldZoom =
+                zoom;
+
+            const mouseX =
+                event.clientX -
+                mapContainer.getBoundingClientRect().left;
+
+            const mouseY =
+                event.clientY -
+                mapContainer.getBoundingClientRect().top;
+
+
+            const mapX =
+                (mouseX - offsetX) /
+                oldZoom;
+
+            const mapY =
+                (mouseY - offsetY) /
+                oldZoom;
+
+
+            if (event.deltaY < 0) {
+
+                zoom *= 1.15;
+
+            } else {
+
+                zoom /= 1.15;
+
+            }
+
+
+            zoom =
+                Math.max(
+                    .2,
+                    Math.min(
+                        5,
+                        zoom
+                    )
+                );
+
+
+            /*
+             * Keep the point under the cursor
+             * in the same position.
+             */
+
+            offsetX =
+                mouseX -
+                mapX * zoom;
+
+            offsetY =
+                mouseY -
+                mapY * zoom;
+
+
+            updateMapTransform();
+
+        },
+        {
+            passive: false
+        }
+    );
+
+
+    /*
+     * ==========================================
+     * PAN MAP
+     * ==========================================
+     */
+
+    let dragging = false;
+
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    let initialOffsetX = 0;
+    let initialOffsetY = 0;
+
+
+    mapContainer.addEventListener(
+        "mousedown",
+        event => {
+
+            /*
+             * Only middle mouse / right mouse
+             * for panning.
+             */
+
+            if (
+                event.button !== 1 &&
+                event.button !== 2
+            )
+                return;
+
+
+            event.preventDefault();
+
+            dragging = true;
+
+            dragStartX =
+                event.clientX;
+
+            dragStartY =
+                event.clientY;
+
+            initialOffsetX =
+                offsetX;
+
+            initialOffsetY =
+                offsetY;
+
+        }
+    );
+
+
+    window.addEventListener(
+        "mousemove",
+        event => {
+
+            if (!dragging)
+                return;
+
+
+            offsetX =
+                initialOffsetX +
+                event.clientX -
+                dragStartX;
+
+            offsetY =
+                initialOffsetY +
+                event.clientY -
+                dragStartY;
+
+
+            updateMapTransform();
+
+        }
+    );
+
+
+    window.addEventListener(
+        "mouseup",
+        () => {
+
+            dragging = false;
+
+        }
+    );
+
+
+    mapContainer.addEventListener(
+        "contextmenu",
+        event => {
+
+            event.preventDefault();
+
+        }
+    );
+
+
+    /*
+     * ==========================================
+     * EXPORT
+     * ==========================================
+     */
+
+    document
+        .getElementById("exportButton")
+        .addEventListener(
+            "click",
+            () => {
+
+                const output =
+                    generateExport();
+
+                exportOutput.value =
+                    output;
+
+                exportModal.classList.add(
+                    "visible"
+                );
+
+            }
+        );
+
+
+    function generateExport() {
+
+        let output = "";
+
+
+        /*
+         * ============================
+         * NODE EXPORT
+         * ============================
+         */
+
+        if (nodes.length > 0) {
+
+            output +=
+`nodes: {
+`;
+
+            nodes.forEach(
+                node => {
+
+                    output +=
+`    ${node.id}: {
+      x: ${node.x},
+      y: ${node.y},
+    },
+
+`;
+
+                }
+            );
+
+
+            output +=
+`  },
+`;
+
+        }
+
+
+        /*
+         * ============================
+         * BLIP EXPORT
+         * ============================
+         */
+
+        if (blips.length > 0) {
+
+            output += `export default [
+`;
+
+            blips.forEach(
+                blip => {
+
+                    output +=
+`  {
+    id: ${JSON.stringify(blip.id)},
+    name: ${JSON.stringify(blip.name)},
+    x: ${blip.x},
+    y: ${blip.y},
+    icon: ${JSON.stringify(blip.icon)},
+    photo: ${JSON.stringify(blip.photo)},
+    description: ${JSON.stringify(blip.description)},
+  },
+
+`;
+
+                }
+            );
+
+
+            output +=
+`];`;
+
+        }
+
+
+        return output.trim();
+
+    }
+
+
+    /*
+     * ==========================================
+     * COPY
+     * ==========================================
+     */
+
+    document
+        .getElementById("copyExport")
+        .addEventListener(
+            "click",
+            async () => {
+
+                try {
+
+                    await navigator.clipboard.writeText(
+                        exportOutput.value
+                    );
+
+                    const button =
+                        document.getElementById(
+                            "copyExport"
+                        );
+
+                    const oldText =
+                        button.textContent;
+
+                    button.textContent =
+                        "Copied!";
+
+                    setTimeout(
+                        () => {
+
+                            button.textContent =
+                                oldText;
+
+                        },
+                        1200
+                    );
+
+                } catch (error) {
+
+                    exportOutput.select();
+
+                    document.execCommand(
+                        "copy"
+                    );
+
+                }
+
+            }
+        );
+
+
+    /*
+     * ==========================================
+     * DOWNLOAD
+     * ==========================================
+     */
+
+    document
+        .getElementById("downloadExport")
+        .addEventListener(
+            "click",
+            () => {
+
+                const blob =
+                    new Blob(
+                        [
+                            exportOutput.value
+                        ],
+                        {
+                            type:
+                                "text/javascript"
+                        }
+                    );
+
+
+                const url =
+                    URL.createObjectURL(
+                        blob
+                    );
+
+
+                const link =
+                    document.createElement(
+                        "a"
+                    );
+
+                link.href = url;
+
+                link.download =
+                    currentMode === "node"
+                        ? "nodes.js"
+                        : "blips.js";
+
+
+                document.body.appendChild(
+                    link
+                );
+
+                link.click();
+
+                link.remove();
+
+                URL.revokeObjectURL(
+                    url
+                );
+
+            }
+        );
+
+
+    document
+        .getElementById("closeExport")
+        .addEventListener(
+            "click",
+            () => {
+
+                exportModal.classList.remove(
+                    "visible"
+                );
+
+            }
+        );
+
+
+    /*
+     * ==========================================
+     * INITIALIZE
+     * ==========================================
+     */
+
+    loadData();
+
+    updateModeInfo();
+
+    render();
+
+    updateMapTransform();
+
+</script>
+
+</body>
+</html>
